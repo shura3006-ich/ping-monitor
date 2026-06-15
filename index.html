@@ -89,14 +89,27 @@
     }
 
     .group-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 10px;
-      padding-left: 2px;
+      font-family: 'Inter', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+      margin-bottom: 12px;
+      padding: 0 0 10px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .group-label::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--accent);
+      flex-shrink: 0;
     }
 
     .cards {
@@ -280,7 +293,7 @@ const SERVERS = [
   }
 ];
 
-const INTERVAL = 30; // секунд
+const INTERVAL = 10; // секунд
 let countdown = INTERVAL;
 let timer = null;
 
