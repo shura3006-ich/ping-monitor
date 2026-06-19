@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ping Monitor</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #151820;
+      --border:    #1f2433;
+      --text:      #c9d1e0;
+      --muted:     #4b5570;
+      --accent:    #3b82f6;
+      --ok:        #22c55e;
+      --warn:      #f59e0b;
+      --error:     #ef4444;
+      --ok-dim:    rgba(34,197,94,0.12);
+      --warn-dim:  rgba(245,158,11,0.12);
+      --error-dim: rgba(239,68,68,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 32px 24px 64px;
+    }
+
+    header {
+      max-width: 960px;
+      margin: 0 auto 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px var(--ok);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #last-update {
+      color: var(--accent);
+    }
+
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .group-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #fff;
+      margin-bottom: 12px;
+      padding: 0 0 10px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .group-label::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 10px 0 0 10px;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+
+    .card.ok::before    { background: var(--ok); }
+    .card.warn::before  { background: var(--warn); }
+    .card.error::before { background: var(--error); }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge.ok    { background: var(--ok-dim);    color: var(--ok); }
+    .badge.warn  { background: var(--warn-dim);  color: var(--warn); }
+    .badge.error { background: var(--error-dim); color: var(--error); }
+    .badge.checking { background: rgba(59,130,246,0.12); color: var(--accent); }
+
+    .card-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-ping {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .ping-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      transition: color 0.3s;
+    }
+
+    .card.ok   .ping-value { color: var(--ok); }
+    .card.warn .ping-value { color: var(--warn); }
+    .card.error .ping-value { color: var(--error); }
+
+    .ping-unit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .refresh-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .countdown {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .cards { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 750px) {
+      body { padding: 20px 16px 40px; }
+      h1 { font-size: 15px; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <h1>ping monitor</h1>
+  </div>
+  <div class="meta">
+    обновлено: <span id="last-update">—</span> &nbsp;|&nbsp;
+    <span class="countdown" id="countdown"></span>
+    &nbsp;
+    <button class="refresh-btn" onclick="runAll()">↺ сейчас</button>
+    &nbsp;
+    <button class="refresh-btn" id="test-btn" onclick="sendTest()">✈ тест</button>
+  </div>
+</header>
+
+<div class="main" id="main"></div>
+
+<script>
+const SERVERS = [
+  {
+    group: "fitexpress",
+    servers: [
+      { name: "FitExpress Main",   url: "https://fitexpress.space" },
+      { name: "FitExpress ATS",    url: "https://ats.fitexpress.space" },
+      { name: "Analyzavr",         url: "https://analyzer.analyzavr.space" },
+    ]
+  },
+  {
+    group: "teravita",
+    servers: [
+      { name: "Terravita Store",   url: "https://terravita.store" },
+      { name: "Terravita Droid",   url: "https://droid.terravita.store" },
+      { name: "Terravita ATS",     url: "https://ats.terravita.store" },
+      { name: "Terravita PP",      url: "https://pp.terravita.store" },
+    ]
+  },
+  {
+    group: "sell1.best",
+    servers: [
+      { name: "Sell1 Main",        url: "https://sell1.best" },
+      { name: "Sell1 Agregator",   url: "https://agregator.sell1.best" },
+      { name: "Sell1 ATS",         url: "https://ats.sell1.best" },
+      { name: "Nutra1",            url: "https://nutra1.top" },
+    ]
+  },
+  {
+    group: "densys",
+    servers: [
+      { name: "Densys Server",     url: "http://173.242.49.191" },
+    ]
+  }
+];
+
+const INTERVAL = 10; // секунд
+let countdown = INTERVAL;
+let timer = null;
+
+function buildUI() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+
+  SERVERS.forEach(group => {
+    const section = document.createElement('div');
+
+    const label = document.createElement('div');
+    label.className = 'group-label';
+    label.textContent = group.group;
+    section.appendChild(label);
+
+    const cards = document.createElement('div');
+    cards.className = 'cards';
+
+    group.servers.forEach(srv => {
+      const id = urlToId(srv.url);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = 'card-' + id;
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="card-name">${srv.name}</div>
+          <div class="badge checking" id="badge-${id}">…</div>
+        </div>
+        <div class="card-url">${srv.url}</div>
+        <div class="card-ping">
+          <div class="ping-value" id="ping-${id}">—</div>
+          <div class="ping-unit" id="unit-${id}"></div>
+        </div>
+      `;
+      cards.appendChild(card);
+    });
+
+    section.appendChild(cards);
+    main.appendChild(section);
+  });
+}
+
+function urlToId(url) {
+  return url.replace(/[^a-z0-9]/gi, '_');
+}
+
+function pingHttp(url) {
+  // For plain http:// targets, fetch is blocked by mixed-content rules.
+  // We fire a tiny Image request instead — the browser still makes the
+  // TCP connection and we measure the round-trip; the image 404 is fine.
+  return new Promise((resolve) => {
+    const img = new Image();
+    const start = performance.now();
+    const done = (ok) => {
+      resolve({ ms: Math.round(performance.now() - start), ok });
+    };
+    img.onload  = () => done(true);
+    img.onerror = () => done(true);   // error still means server replied
+    setTimeout(() => resolve({ ms: 8000, ok: false }), 8000);
+    img.src = url + '/favicon.ico?_=' + Date.now();
+  });
+}
+
+async function pingServer(srv) {
+  const id = urlToId(srv.url);
+  const card  = document.getElementById('card-' + id);
+  const badge = document.getElementById('badge-' + id);
+  const pingEl = document.getElementById('ping-' + id);
+  const unitEl = document.getElementById('unit-' + id);
+
+  // reset
+  card.className = 'card';
+  badge.className = 'badge checking';
+  badge.textContent = '…';
+  pingEl.textContent = '—';
+  unitEl.textContent = '';
+
+  const isHttp = srv.url.startsWith('http://');
+  let ms, ok;
+
+  if (isHttp) {
+    const result = await pingHttp(srv.url);
+    ms = result.ms; ok = result.ok;
+  } else {
+    const start = performance.now();
+    try {
+      await fetch(srv.url, {
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(8000)
+      });
+      ms = Math.round(performance.now() - start);
+      ok = true;
+    } catch (e) {
+      ms = Math.round(performance.now() - start);
+      ok = false;
+    }
+  }
+
+  if (ok && ms < 8000) {
+    pingEl.textContent = ms;
+    unitEl.textContent = 'ms';
+    if (ms < 300) {
+      card.className = 'card ok';
+      badge.className = 'badge ok';
+      badge.textContent = 'online';
+    } else if (ms < 1000) {
+      card.className = 'card warn';
+      badge.className = 'badge warn';
+      badge.textContent = 'slow';
+    } else {
+      card.className = 'card warn';
+      badge.className = 'badge warn';
+      badge.textContent = 'high';
+    }
+  } else {
+    card.className = 'card error';
+    badge.className = 'badge error';
+    badge.textContent = 'offline';
+    pingEl.textContent = 'timeout';
+    unitEl.textContent = '';
+  }
+}
+
+function runAll() {
+  const allServers = SERVERS.flatMap(g => g.servers);
+  allServers.forEach(pingServer);
+
+  const now = new Date();
+  document.getElementById('last-update').textContent =
+    now.toLocaleTimeString('ru-RU');
+
+  // reset countdown
+  countdown = INTERVAL;
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent =
+      `следующий через ${countdown}с`;
+    if (countdown <= 0) {
+      runAll();
+    }
+  }, 1000);
+}
+
+buildUI();
+runAll();
+startTimer();
+
+// Telegram config
+const TG_TOKEN = "8512957410:AAHiM3-imfQ_86xWyoA6KotkW9T-CCps8kQ";
+const TG_CHATS = ["137593505", "450308060"];
+
+async function sendTelegram(text) {
+  const results = await Promise.all(TG_CHATS.map(async (chatId) => {
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" })
+      });
+      const data = await resp.json();
+      return { chatId, ok: data.ok, error: data.description };
+    } catch (e) {
+      return { chatId, ok: false, error: e.message };
+    }
+  }));
+  return results;
+}
+
+async function sendTest() {
+  const btn = document.getElementById('test-btn');
+  btn.textContent = '⏳ отправка...';
+  btn.disabled = true;
+
+  const now = new Date().toLocaleTimeString('ru-RU');
+  const text = `🔔 <b>Тестовое сообщение</b>\n🕐 ${now}\n✅ Ping Monitor работает корректно`;
+
+  const results = await sendTelegram(text);
+  const allOk = results.every(r => r.ok);
+  const failed = results.filter(r => !r.ok);
+
+  if (allOk) {
+    btn.textContent = '✅ отправлено';
+    setTimeout(() => { btn.textContent = '✈ тест'; btn.disabled = false; }, 3000);
+  } else {
+    btn.textContent = '❌ ошибка';
+    console.error('Failed chats:', failed);
+    setTimeout(() => { btn.textContent = '✈ тест'; btn.disabled = false; }, 3000);
+  }
+}
+</script>
+</body>
+</html>
